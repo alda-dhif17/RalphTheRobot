@@ -22,6 +22,9 @@ blocks_delivered = 0
 def gameLoop(blocks_to_deliver):
     global brick_state
 
+
+    leftMotor = Motor(Port.B)
+    rightMotor = Motor(Port.C)
     wheels = DriveBase(Motor(Port.B), Motor(Port.C), 56, 114)
     uSensor = UltrasonicSensor(Port.S4)
     cSensor = ColorSensor(Port.S3)
@@ -37,59 +40,46 @@ def gameLoop(blocks_to_deliver):
         if brick_state == Status.WAIT:
             return
         elif brick_state == Status.SEARCHING:
+            print('STATE: SEARCHING')
             t = threading.Thread(target=searchLuggage, args=(wheels, cSensor, gSensor))
             t.start()
             brick_state = Status.COMPUTING
         elif brick_state == Status.CARRYING_LUGGAGE:
+            print('STATE: CARRYING_LUGGAGE')
             t = threading.Thread(target=deliverLuggage, args=(wheels, cSensor, ))
             t.start()
             brick_state = Status.COMPUTING
         elif brick_state == Status.PICKING_UP:
+            print('STATE: PICKING_UP')
             t = threading.Thread(target=doLuggage, args=(wheels, cSensor, True, ))
             t.start()
             brick_state = Status.COMPUTING
         elif brick_state == Status.DEPOSITING:
+            print('STATE: DEPOSITING')
             t = threading.Thread(target=doLuggage, args=(wheels, cSensor,False, ))
             t.start()
             brick_state = Status.COMPUTING
 
 def searchLuggage(wheels, cSensor, gSensor):
     global brick_state
-    wheels.drive(-160, 0)
 
+    # while not slightly red ... 
     while cSensor.color() != Color.RED:
+        print('Searching:', cSensor.rgb())
+
         if not (cSensor.color() in [Color.BLUE, Color.WHITE]) and (cSensor.color() != Color.RED):
-            wheels.stop(Stop.HOLD)
-            wheels.drive_time(150, 0, 700)
-            turn(wheels, 45)
+            wheels.drive_time(50, 45, 1000)
+        else:
             wheels.drive(-160, 0)
-        wait(10)
-    wheels.stop(Stop.HOLD)
 
-    if positionRight(wheels, gSensor, 15):
-        brick_state = Status.SEARCHING
-        return
+    wheels.stop(Stop.BRAKE)
 
-    turn(wheels, 200)
-    wheels.drive_time(70, 0, 1000)
+    You_spin_me_right_round_baby_Right_round_like_a_record_baby_Right_round_round_round(wheels, 190)
+    wheels.drive_time(65, 0, 1000)
     brick_state = Status.PICKING_UP
 
-def turn(wheels, angle):
+def You_spin_me_right_round_baby_Right_round_like_a_record_baby_Right_round_round_round(wheels, angle):
     wheels.drive_time(0, angle, 1000)
-
-def positionRight(wheels, gSensor, threshold=15):
-    angle = gSensor.angle() % 360
-    print("angle: ", angle)
-
-    if (angle >= -threshold and angle <= threshold) or (angle >= 360-threshold and angle <= 360) or (angle >= -360 and angle <= -360+threshold):
-        return False
-
-    wheels.drive_time(100/2, -angle, 2000)
-    wheels.stop(Stop.HOLD)
-    wheels.drive_time(100/2, angle/2, 2000)
-    wheels.stop(Stop.HOLD)
-
-    return True
 
 def doLuggage(wheels, cSensor, pickup=True):
     global brick_state, blocks_delivered
@@ -102,33 +92,37 @@ def doLuggage(wheels, cSensor, pickup=True):
     else:
         stapler = Motor(Port.A, Direction.COUNTERCLOCKWISE)
         
-        wheels.drive_time(-70, 0, 1000)
-        turn(wheels, 190)
+        You_spin_me_right_round_baby_Right_round_like_a_record_baby_Right_round_round_round(wheels, 180)
 
         stapler.run_angle(50, 100, Stop.BRAKE)
         wheels.drive_time(-50, 0, 1000)
         stapler.run_angle(50, 25, Stop.BRAKE)
         
+        wheels.drive_time(-113/3, 45/3, 1000*3)
+        wheels.drive_time(0,45/3,1000*3)
+
         blocks_delivered += 1
         brick_state = Status.SEARCHING
 
 def deliverLuggage(wheels, cSensor):
     global brick_state
     
+    # while not slightly green
     while cSensor.color() != Color.GREEN:
+        print('Deliver:', cSensor.rgb())
+
         if cSensor.color() != Color.BLUE:
             wheels.drive_time(50, 45, 1000)
         else:
             wheels.drive(-160, 0)
-    wheels.stop(Stop.HOLD)
+    wheels.stop(Stop.BRAKE)
 
-    # turn(wheels, 190)
     brick_state = Status.DEPOSITING
 
 def main():
     # Play a sound (1000Hz, 1000ms)
     brick.sound.file(SoundFile.SNORING, 1000)
-    brick.sound.file(SoundFile.ERROR_ALARM, 2500)
+    brick.sound.file(SoundFile.ERROR_ALARM, 1000)
     brick.display.image(ImageFile.UP)
     brick.sound.file(SoundFile.HELLO, 1000)
 
